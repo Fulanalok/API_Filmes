@@ -143,7 +143,17 @@ app.post("/api/assistant", async (req, res) => {
         details.push(d.data);
       }
       const answer = await generateAssistantAnswer(query, details, filters);
-      return res.json({ answer, sources: details.map((d) => ({ id: d.id, title: d.title })) });
+      return res.json({
+        answer,
+        sources: details.map((d) => ({
+          id: d.id,
+          title: d.title,
+          overview: d.overview,
+          poster_path: d.poster_path,
+          release_date: d.release_date,
+          vote_average: d.vote_average,
+        })),
+      });
     } else {
       for (const item of top) {
         if (!item?.id) continue;
@@ -153,7 +163,17 @@ app.post("/api/assistant", async (req, res) => {
         details.push(d.data);
       }
       const answer = await generateAssistantAnswer(query, details);
-      return res.json({ answer, sources: details.map((d) => ({ id: d.id, title: d.title })) });
+      return res.json({
+        answer,
+        sources: details.map((d) => ({
+          id: d.id,
+          title: d.title,
+          overview: d.overview,
+          poster_path: d.poster_path,
+          release_date: d.release_date,
+          vote_average: d.vote_average,
+        })),
+      });
     }
   } catch (error) {
     if (axios.isAxiosError(error) && error.response) {

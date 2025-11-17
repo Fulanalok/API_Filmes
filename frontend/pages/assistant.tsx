@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { askAssistant, AssistantResponse } from "@/services/AssistantService";
+import Image from "next/image";
+import Link from "next/link";
+import { askAssistant, AssistantResponse, AssistantSource } from "@/services/AssistantService";
 
 export default function AssistantPage() {
   const [q, setQ] = useState("");
@@ -33,16 +35,42 @@ export default function AssistantPage() {
           </button>
         </form>
         {data && (
-          <div className="space-y-4">
+          <div className="space-y-6">
             <div className="p-4 bg-gray-800 rounded-lg whitespace-pre-line">{data.answer}</div>
             {data.sources?.length > 0 && (
               <div>
                 <h2 className="text-xl font-semibold mb-2">Referências</h2>
-                <ul className="list-disc pl-5">
-                  {data.sources.map((s) => (
-                    <li key={s.id}>{s.title}</li>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {data.sources.map((s: AssistantSource) => (
+                    <div key={s.id} className="flex gap-3 p-3 bg-gray-800 rounded-lg">
+                      {s.poster_path ? (
+                        <div className="relative w-20 h-28 flex-shrink-0">
+                          <Image
+                            src={`https://image.tmdb.org/t/p/w185${s.poster_path}`}
+                            alt={s.title}
+                            fill
+                            sizes="80px"
+                            className="object-cover rounded"
+                          />
+                        </div>
+                      ) : (
+                        <div className="w-20 h-28 bg-gray-700 rounded flex items-center justify-center text-xs text-gray-300">Sem pôster</n+                        </div>
+                      )}
+                      <div className="flex-1">
+                        <Link href={`/movies/${s.id}`} className="text-white font-semibold hover:underline">
+                          {s.title}
+                        </Link>
+                        <div className="text-sm text-gray-300">
+                          {(s.release_date ? new Date(s.release_date).getFullYear() : "—")}{" "}
+                          {typeof s.vote_average === "number" && ` • ${s.vote_average.toFixed(1)}`}
+                        </div>
+                        {s.overview && (
+                          <p className="mt-1 text-sm text-gray-300 line-clamp-3">{s.overview}</p>
+                        )}
+                      </div>
+                    </div>
                   ))}
-                </ul>
+                </div>
               </div>
             )}
           </div>

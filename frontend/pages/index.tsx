@@ -3,6 +3,7 @@ import { useRouter } from "next/router";
 import { useQuery } from "@tanstack/react-query";
 import { searchMovies, SearchApiResponse, getPopularMovies } from "@/services/MovieApiService";
 import Image from "next/image";
+import Link from "next/link";
 import { MovieResult } from "@/types/movie";
 import MovieCard from "@/components/MovieCard";
 import SearchBar from "@/components/SearchBar";
@@ -59,7 +60,7 @@ export default function Home() {
     <div className="min-h-screen bg-black flex flex-col items-center py-10 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl w-full">
         <div className="flex items-center justify-end mb-4">
-          <a href="/assistant" className="text-sm px-3 py-1 rounded-lg bg-green-600 text-white hover:bg-green-700 transition">Assistente</a>
+          <Link href="/assistant" className="text-sm px-3 py-1 rounded-lg bg-green-600 text-white hover:bg-green-700 transition">Assistente</Link>
         </div>
         <h1 className="text-4xl font-extrabold text-white text-center mb-6">
           Encontre Seu Próximo Filme

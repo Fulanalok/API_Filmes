@@ -132,7 +132,7 @@ app.post("/api/assistant", async (req, res) => {
     if (!top.length) {
       const filters = extractFilters(query);
       const discover = await axios.get("https://api.themoviedb.org/3/discover/movie", {
-        params: { api_key: TMDB_API_KEY, language: "pt-BR", ...filters },
+        params: { api_key: TMDB_API_KEY, language: "pt-BR", include_adult: false, region: "BR", ...filters },
       });
       top = Array.isArray(discover.data?.results) ? discover.data.results.slice(0, 3) : [];
       for (const item of top) {

@@ -199,3 +199,26 @@ Este projeto é livre para uso pessoal e educacional.
 ## 👨‍💻 Autor
 
 Lucas Vilhena
+## Executar em desenvolvimento
+
+- Backend:
+  - `cd backend`
+  - `npm run dev`
+  - Variáveis em `backend/.env`: `TMDB_API_KEY`, `OPENAI_API_KEY`
+- Frontend:
+  - `cd frontend`
+  - `npx next@15.3.4 dev -p 3000` com `NEXT_PUBLIC_BACKEND_URL=http://localhost:5000`
+
+## Assistente de IA
+
+- Endpoint: `POST /api/assistant`
+- Página: `/assistant`
+- Requer `TMDB_API_KEY`; usa `OPENAI_API_KEY` se disponível para respostas neurais.
+
+## CI no GitHub Actions
+
+- Workflow em `.github/workflows/ci.yml` builda `backend` e `frontend` em cada push/PR.
+- Configure Secrets do repositório:
+  - `TMDB_API_KEY`: chave TMDB
+  - `OPENAI_API_KEY`: chave OpenAI
+  - `NEXT_PUBLIC_BACKEND_URL`: URL do backend (ex.: `https://sua-api.exemplo`)

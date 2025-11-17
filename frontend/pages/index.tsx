@@ -58,6 +58,9 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-black flex flex-col items-center py-10 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl w-full">
+        <div className="flex items-center justify-end mb-4">
+          <a href="/assistant" className="text-sm px-3 py-1 rounded-lg bg-green-600 text-white hover:bg-green-700 transition">Assistente</a>
+        </div>
         <h1 className="text-4xl font-extrabold text-white text-center mb-6">
           Encontre Seu Próximo Filme
         </h1>

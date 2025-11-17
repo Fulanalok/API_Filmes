@@ -222,3 +222,4 @@ Lucas Vilhena
   - `TMDB_API_KEY`: chave TMDB
   - `OPENAI_API_KEY`: chave OpenAI
   - `NEXT_PUBLIC_BACKEND_URL`: URL do backend (ex.: `https://sua-api.exemplo`)
+![CI](https://github.com/Fulanalok/API_Filmes/actions/workflows/ci.yml/badge.svg)

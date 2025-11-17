@@ -39,5 +39,7 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: |
           export NEXT_TELEMETRY_DISABLED=1
+          export TAILWIND_DISABLE_OXIDE=1
+          export NEXT_PUBLIC_BACKEND_URL="http://localhost:5000"
           export CI=true
-          npm run build
+          npx --yes next@15.3.4 build

@@ -4,8 +4,8 @@ import { askAssistant, AssistantResponse } from "@/services/AssistantService";
 
 export default function AssistantPage() {
   const [q, setQ] = useState("");
-  const { mutate, data, isPending } = useMutation<AssistantResponse, Error>({
-    mutationFn: (query: string) => askAssistant(query),
+  const { mutate, data, isPending } = useMutation<AssistantResponse, Error, string>({
+    mutationFn: askAssistant,
   });
   return (
     <div className="min-h-screen bg-black text-white flex flex-col items-center py-10 px-4">

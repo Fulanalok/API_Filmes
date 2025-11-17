@@ -82,9 +82,13 @@ export default function Home() {
             <p className="text-red-500 text-center mb-4">{errorPopular?.message}</p>
           )}
           <div className="space-y-6">
-            {(isLoadingPopular ? Array.from({ length: 6 }) : popular.slice(0, 6)).map((item, idx) => (
+            {(
+              (isLoadingPopular
+                ? (Array.from({ length: 6 }, () => null) as (MovieResult | null)[])
+                : (popular.slice(0, 6) as (MovieResult | null)[]))
+            ).map((item, idx) => (
               <div
-                key={item ? item.id : idx}
+                key={item?.id ?? idx}
                 className="rounded-2xl overflow-hidden cursor-pointer transition-transform duration-300 hover:scale-[1.01] shadow-lg"
                 onClick={() => item && handleMovieCardClick(item.id)}
               >
@@ -97,7 +101,7 @@ export default function Home() {
                         fill
                         sizes="(max-width: 640px) 100vw, (max-width: 1024px) 100vw, 100vw"
                         className="object-cover"
-                        priority={false}
+                        priority={idx === 0}
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
                       <div className="absolute bottom-0 left-0 right-0 p-4">

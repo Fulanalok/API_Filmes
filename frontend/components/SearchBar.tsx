@@ -3,7 +3,7 @@ import React, { useEffect, useRef } from "react";
 interface SearchBarProps {
   value: string;
   onChange: (value: string) => void;
-  onSubmit?: () => void;
+  onSubmit?: (e: React.FormEvent) => void;
   placeholder?: string;
   debounceMs?: number;
   onDebouncedChange?: (value: string) => void;
@@ -30,7 +30,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit?.();
+    onSubmit?.(e);
   };
 
   return (

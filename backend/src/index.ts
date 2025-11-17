@@ -1,6 +1,9 @@
 import express from "express";
 import dotenv from "dotenv";
+import path from "path";
 import axios from "axios";
+import bodyParser from "body-parser";
+import { generateAssistantAnswer, extractFilters } from "./lib/ai";
 import rateLimit from "express-rate-limit";
 
 // Cache simples em memória com TTL
@@ -23,9 +26,10 @@ function setCache(key: string, data: unknown) {
   cache.set(key, { ts: Date.now(), data });
 }
 
-dotenv.config();
+dotenv.config({ path: path.resolve(process.cwd(), ".env") });
 
 const app = express();
+app.use(bodyParser.json());
 const PORT = process.env.PORT || 5000;
 const TMDB_API_KEY = process.env.TMDB_API_KEY;
 
@@ -109,6 +113,58 @@ app.get("/api/search/movie", async (req, res) => {
       .status(500)
       .json({ message: "Erro inesperado ao processar a requisição." });
   }
+});
+
+app.post("/api/assistant", async (req, res) => {
+  const { query } = req.body as { query?: string };
+  if (!query || !query.trim()) {
+    return res.status(400).json({ message: "O parâmetro 'query' é obrigatório." });
+  }
+  if (!TMDB_API_KEY) {
+    return res.status(500).json({ message: "Chave de API TMDB ausente." });
+  }
+  try {
+    const search = await axios.get("https://api.themoviedb.org/3/search/movie", {
+      params: { api_key: TMDB_API_KEY, query, language: "pt-BR" },
+    });
+    let top = Array.isArray(search.data?.results) ? search.data.results.slice(0, 3) : [];
+    const details: any[] = [];
+    if (!top.length) {
+      const filters = extractFilters(query);
+      const discover = await axios.get("https://api.themoviedb.org/3/discover/movie", {
+        params: { api_key: TMDB_API_KEY, language: "pt-BR", ...filters },
+      });
+      top = Array.isArray(discover.data?.results) ? discover.data.results.slice(0, 3) : [];
+      for (const item of top) {
+        if (!item?.id) continue;
+        const d = await axios.get(`https://api.themoviedb.org/3/movie/${item.id}`, {
+          params: { api_key: TMDB_API_KEY, language: "pt-BR", append_to_response: "credits" },
+        });
+        details.push(d.data);
+      }
+      const answer = await generateAssistantAnswer(query, details, filters);
+      return res.json({ answer, sources: details.map((d) => ({ id: d.id, title: d.title })) });
+    } else {
+      for (const item of top) {
+        if (!item?.id) continue;
+        const d = await axios.get(`https://api.themoviedb.org/3/movie/${item.id}`, {
+          params: { api_key: TMDB_API_KEY, language: "pt-BR", append_to_response: "credits" },
+        });
+        details.push(d.data);
+      }
+      const answer = await generateAssistantAnswer(query, details);
+      return res.json({ answer, sources: details.map((d) => ({ id: d.id, title: d.title })) });
+    }
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response) {
+      return res.status(error.response.status).json({ message: "Erro ao consultar assistente.", details: error.response.data });
+    }
+    return res.status(500).json({ message: "Erro inesperado no assistente." });
+  }
+});
+
+app.get("/api/assistant/status", (req, res) => {
+  res.json({ openaiEnabled: !!process.env.OPENAI_API_KEY });
 });
 
 app.get("/api/movie/:id", async (req, res) => {

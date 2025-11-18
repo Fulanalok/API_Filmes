@@ -1,5 +1,7 @@
 import axios from "axios";
 
+let openAIStatus: { ok: boolean; message?: string; at?: number } | undefined;
+
 export type DiscoverParams = {
   sort_by?: string;
   with_genres?: string;
@@ -56,6 +58,10 @@ export function extractFilters(query: string): DiscoverParams {
     "aventura": "12",
     "crime": "80",
     "fantasia": "14",
+    "melancolico": "18",
+    "melancólico": "18",
+    "melancholic": "18",
+    "triste": "18",
   };
 
   let detectedGenre: string | undefined;
@@ -67,68 +73,74 @@ export function extractFilters(query: string): DiscoverParams {
   }
 
   const cerebral = q.includes("cerebral") || q.includes("reflexivo") || q.includes("mind-bending") || q.includes("mind bending");
-  const params: DiscoverParams = { sort_by: "popularity.desc", include_adult: false, region: "BR", with_original_language: "en", "vote_count.gte": 200 };
+  const melancholic = q.includes("melancolico") || q.includes("melancólico") || q.includes("melancholic") || q.includes("triste");
+  const wantsEnglish = q.includes("em ingles") || q.includes("em inglês") || q.includes("english");
+  const params: DiscoverParams = { sort_by: "popularity.desc", include_adult: false, region: "BR", "vote_count.gte": 200 };
   if (detectedGenre) params.with_genres = detectedGenre;
   if (startYear) params["primary_release_date.gte"] = `${startYear}-01-01`;
   params["primary_release_date.lte"] = `${(endYearOverride ?? endYear)}-12-31`;
-  if (cerebral) params["vote_average.gte"] = 7;
+  if (cerebral || melancholic) {
+    params["vote_average.gte"] = 7;
+    params.sort_by = "vote_average.desc";
+  }
+  if (wantsEnglish) params.with_original_language = "en";
   return params;
 }
 
-export async function generateAssistantAnswer(query: string, context: any[], filters?: DiscoverParams): Promise<string> {
+export async function generateAssistantAnswer(query: string, context: any[], filters?: DiscoverParams, history?: { role: "user" | "assistant"; content: string }[]): Promise<string> {
   const key = process.env.OPENAI_API_KEY;
   const summary = summarizeContext(query, context, filters);
   if (!key) {
+    console.log("generateAssistantAnswer: OPENAI_API_KEY ausente, retornando resumo");
+    openAIStatus = { ok: false, message: "OPENAI_API_KEY ausente", at: Date.now() };
     return summary;
   }
   try {
+    const messages: { role: string; content: string }[] = [];
+    messages.push({ role: "system", content: "Você é um assistente de filmes. Responda em português de forma natural e breve (1–2 frases). Cite até 3 títulos com ano. Evite linguagem técnica, filtros, notas e datas, a menos que o usuário peça. Termine com uma pergunta curta opcional." });
+    if (Array.isArray(history)) {
+      for (const m of history) {
+        if (!m?.content) continue;
+        messages.push({ role: m.role, content: m.content });
+      }
+    }
+    messages.push({ role: "user", content: `Pergunta: ${query}\nContexto:\n${summary}` });
     const resp = await axios.post(
       "https://api.openai.com/v1/chat/completions",
       {
         model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: "Você é um assistente de filmes. Responda em português de forma clara e curta." },
-          { role: "user", content: `Pergunta: ${query}\nContexto:\n${summary}` },
-        ],
+        messages,
         temperature: 0.3,
+        max_tokens: 60,
       },
       { headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" } }
     );
     const content: string = resp.data?.choices?.[0]?.message?.content ?? summary;
-    return content;
-  } catch {
+    console.log("generateAssistantAnswer: resposta da IA gerada", { length: typeof content === "string" ? content.length : 0 });
+    openAIStatus = { ok: true, at: Date.now() };
+    const trimmed = (content || "").trim();
+    if (trimmed.length > 280) {
+      return summary;
+    }
+    return trimmed;
+  } catch (e: any) {
+    const msg = e?.response?.data?.error?.message || e?.message || "Falha ao chamar OpenAI";
+    openAIStatus = { ok: false, message: msg, at: Date.now() };
     return summary;
   }
 }
 
 function summarizeContext(query: string, context: any[], filters?: DiscoverParams): string {
-  const lines: string[] = [];
-  lines.push(`Consulta: ${query}`);
-  if (filters) {
-    lines.push(`Filtros:`);
-    if (filters.with_genres) {
-      const genreName = {
-        "28": "Ação",
-        "878": "Ficção Científica",
-        "18": "Drama",
-        "35": "Comédia",
-        "53": "Thriller",
-        "16": "Animação",
-        "27": "Terror",
-        "10749": "Romance",
-        "12": "Aventura",
-        "80": "Crime",
-        "14": "Fantasia",
-      }[filters.with_genres] || filters.with_genres;
-      lines.push(`- Gênero: ${genreName}`);
-    }
-    if (filters["primary_release_date.gte"]) lines.push(`- Desde: ${filters["primary_release_date.gte"]}`);
-    if (filters["primary_release_date.lte"]) lines.push(`- Até: ${filters["primary_release_date.lte"]}`);
-    if (filters["vote_average.gte"]) lines.push(`- Nota mínima: ${filters["vote_average.gte"]}`);
-    if (filters["vote_count.gte"]) lines.push(`- Mínimo de votos: ${filters["vote_count.gte"]}`);
+  if (context && context.length > 0) {
+    const items = context.slice(0, 3).map((c) => `${c.title} (${new Date(c.release_date).getFullYear()})`);
+    return `Algumas sugestões: ${items.join(", ")}. Quer mais opções?`;
   }
-  for (const c of context) {
-    lines.push(`- ${c.title} (${new Date(c.release_date).getFullYear()}) Nota: ${c.vote_average}`);
-  }
-  return lines.join("\n");
+  return `Não encontrei boas opções para "${query}". Pode especificar gênero ou período?`;
+}
+
+export function getOpenAIStatus() {
+  return {
+    enabled: !!process.env.OPENAI_API_KEY,
+    last: openAIStatus,
+  };
 }

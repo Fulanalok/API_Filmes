@@ -51,4 +51,27 @@ export interface MovieDetails {
     results: Video[];
   };
   tagline?: string;
+  images?: {
+    backdrops?: { file_path: string; width: number; height: number }[];
+    posters?: { file_path: string; width: number; height: number }[];
+  };
+  keywords?: {
+    keywords?: { id: number; name: string }[];
+  };
+  recommendations?: {
+    results: MovieResult[];
+    total_pages?: number;
+  };
+  similar?: {
+    results: MovieResult[];
+  };
+  external_ids?: {
+    imdb_id?: string | null;
+    facebook_id?: string | null;
+    instagram_id?: string | null;
+    twitter_id?: string | null;
+  };
+  release_dates?: {
+    results?: { iso_3166_1: string; release_dates: { certification?: string; release_date?: string }[] }[];
+  };
 }

@@ -1,7 +1,7 @@
 import { useRouter } from "next/router";
 import Image from "next/image";
 import { useQuery } from "@tanstack/react-query";
-import { getMovieDetails } from "@/services/MovieApiService";
+import { getMovieDetails, getWatchProviders, WatchProvidersResponse } from "@/services/MovieApiService";
 import { MovieDetails } from "@/types/movie";
 
 export default function MovieDetailsPage() {
@@ -18,6 +18,16 @@ export default function MovieDetailsPage() {
   } = useQuery<MovieDetails, Error>({
     queryKey: ["movieDetails", movieId],
     queryFn: () => getMovieDetails(movieId as number),
+    enabled: !!movieId,
+    staleTime: 1000 * 60 * 60,
+    retry: 2,
+  });
+
+  const {
+    data: providers,
+  } = useQuery<WatchProvidersResponse, Error>({
+    queryKey: ["watchProviders", movieId],
+    queryFn: () => getWatchProviders(movieId as number),
     enabled: !!movieId,
     staleTime: 1000 * 60 * 60,
     retry: 2,
@@ -76,6 +86,148 @@ export default function MovieDetailsPage() {
     (v) => v.site === "YouTube" && v.type === "Trailer"
   );
 
+  const runtimeStr = typeof movie.runtime === "number" && movie.runtime > 0
+    ? `${Math.floor(movie.runtime / 60)}h ${movie.runtime % 60}m`
+    : undefined;
+  const recs = movie.recommendations?.results?.slice(0, 8) || [];
+  const imdbUrl = movie.external_ids?.imdb_id ? `https://www.imdb.com/title/${movie.external_ids.imdb_id}/` : undefined;
+  const certificationBR = movie.release_dates?.results?.find(r => r.iso_3166_1 === "BR")?.release_dates?.find(r => r.certification)?.certification;
+  const brProviders = providers?.results?.BR;
+
+  const translateProviderName = (name: string) => {
+    let n = name;
+    n = n.replace(/with ads/gi, "com anúncios");
+    n = n.replace(/\bStandard\b/gi, "Padrão");
+    n = n.replace(/\bBasic\b/gi, "Básico");
+    n = n.replace(/\bPremium\b/gi, "Premium");
+    return n;
+  };
+
+  const translateCharacter = (ch?: string) => {
+    if (!ch) return "";
+    let s = ch;
+    s = s.replace(/\bYoung\b/gi, "Jovem");
+    s = s.replace(/\bOld(er)?\b/gi, "Mais velho");
+    s = s.replace(/\bAdult\b/gi, "Adulto");
+    s = s.replace(/\bChild\b/gi, "Criança");
+    s = s.replace(/\bTeen(ager)?\b/gi, "Adolescente");
+    s = s.replace(/\bDetective\b/gi, "Detetive");
+    s = s.replace(/\bPolice Officer\b/gi, "Policial");
+    s = s.replace(/\bOfficer\b/gi, "Oficial");
+    s = s.replace(/\bCaptain\b/gi, "Capitão");
+    s = s.replace(/\bDoctor\b/gi, "Doutor");
+    s = s.replace(/\bProfessor\b/gi, "Professor");
+    s = s.replace(/\bTeacher\b/gi, "Professor(a)");
+    s = s.replace(/\bStudent\b/gi, "Estudante");
+    s = s.replace(/\bNurse\b/gi, "Enfermeiro(a)");
+    s = s.replace(/\bDriver\b/gi, "Motorista");
+    s = s.replace(/\bBoss\b/gi, "Chefe");
+    s = s.replace(/\bManager\b/gi, "Gerente");
+    s = s.replace(/\bAssistant\b/gi, "Assistente");
+    s = s.replace(/\bJudge\b/gi, "Juiz(a)");
+    s = s.replace(/\bLawyer\b/gi, "Advogado(a)");
+    s = s.replace(/\bSoldier\b/gi, "Soldado");
+    s = s.replace(/\bAgent\b/gi, "Agente");
+    s = s.replace(/\bHimself\b/gi, "Ele mesmo");
+    s = s.replace(/\bHerself\b/gi, "Ela mesma");
+    s = s.replace(/\bVoice\b/gi, "Voz");
+    s = s.replace(/\bNarrator\b/gi, "Narrador(a)");
+    s = s.replace(/\buncredited\b/gi, "não creditado");
+    s = s.replace(/\bAdditional Voices\b/gi, "Vozes adicionais");
+    s = s.replace(/\bParamedic\b/gi, "Paramédico(a)");
+    s = s.replace(/\bGuard\b/gi, "Guarda");
+    s = s.replace(/\bSecurity\b/gi, "Segurança");
+    s = s.replace(/\bCrew\b/gi, "Equipe");
+    s = s.replace(/\bMember\b/gi, "Membro");
+    s = s.replace(/\bShopkeeper\b/gi, "Lojista");
+    s = s.replace(/\bClerk\b/gi, "Atendente");
+    s = s.replace(/\bReporter\b/gi, "Repórter");
+    s = s.replace(/\bPhotographer\b/gi, "Fotógrafo(a)");
+    s = s.replace(/\bWaiter\b/gi, "Garçom/Garçonete");
+    s = s.replace(/\bChef\b/gi, "Chef");
+    s = s.replace(/\bCook\b/gi, "Cozinheiro(a)");
+    s = s.replace(/\bBartender\b/gi, "Barman");
+    s = s.replace(/\bBouncer\b/gi, "Segurança");
+    s = s.replace(/\bDriver\b/gi, "Motorista");
+    s = s.replace(/\bPriest\b/gi, "Padre");
+    s = s.replace(/\bMonk\b/gi, "Monge");
+    s = s.replace(/\bNun\b/gi, "Freira");
+    s = s.replace(/\bKing\b/gi, "Rei");
+    s = s.replace(/\bQueen\b/gi, "Rainha");
+    s = s.replace(/\bPrince\b/gi, "Príncipe");
+    s = s.replace(/\bPrincess\b/gi, "Princesa");
+    s = s.replace(/\bMayor\b/gi, "Prefeito(a)");
+    s = s.replace(/\bGovernor\b/gi, "Governador(a)");
+    s = s.replace(/\bPresident\b/gi, "Presidente");
+    s = s.replace(/\bScientist\b/gi, "Cientista");
+    s = s.replace(/\bEngineer\b/gi, "Engenheiro(a)");
+    s = s.replace(/\bMechanic\b/gi, "Mecânico(a)");
+    s = s.replace(/\bFarmer\b/gi, "Agricultor(a)");
+    s = s.replace(/\bFisherman\b/gi, "Pescador(a)");
+    s = s.replace(/\bPilot\b/gi, "Piloto");
+    s = s.replace(/\bSteward(ess)?\b/gi, "Comissário(a)");
+    s = s.replace(/\bBanker\b/gi, "Banqueiro(a)");
+    s = s.replace(/\bThief\b/gi, "Ladrão/Ladraa");
+    s = s.replace(/\bRobber\b/gi, "Assaltante");
+    s = s.replace(/\bMurderer\b/gi, "Assassino(a)");
+    s = s.replace(/\bKiller\b/gi, "Assassino(a)");
+    s = s.replace(/\bHitman\b/gi, "Matador");
+    s = s.replace(/\bGangster\b/gi, "Gângster");
+    s = s.replace(/\bCriminal\b/gi, "Criminoso(a)");
+    s = s.replace(/\bVictim\b/gi, "Vítima");
+    s = s.replace(/\bWitness\b/gi, "Testemunha");
+    s = s.replace(/\bSurgeon\b/gi, "Cirurgião(ã)");
+    s = s.replace(/\bParamedic\b/gi, "Paramédico(a)");
+    s = s.replace(/\bFirefighter\b/gi, "Bombeiro(a)");
+    s = s.replace(/\bCop\b/gi, "Policial");
+    s = s.replace(/\bSheriff\b/gi, "Xerife");
+    s = s.replace(/\bDeputy\b/gi, "Deputado(a)");
+    s = s.replace(/\bColonel\b/gi, "Coronel");
+    s = s.replace(/\bGeneral\b/gi, "General");
+    s = s.replace(/\bSergeant\b/gi, "Sargento");
+    s = s.replace(/\bLieutenant\b/gi, "Tenente");
+    s = s.replace(/\bPrivate\b/gi, "Soldado");
+    s = s.replace(/\bCommander\b/gi, "Comandante");
+    s = s.replace(/\bPilot\b/gi, "Piloto");
+    s = s.replace(/\bAttendant\b/gi, "Atendente");
+    s = s.replace(/\bAnnouncer\b/gi, "Locutor(a)");
+    s = s.replace(/\bHost\b/gi, "Apresentador(a)");
+    s = s.replace(/\bPresenter\b/gi, "Apresentador(a)");
+    s = s.replace(/\bTV\b/gi, "TV");
+    s = s.replace(/\bRadio\b/gi, "Rádio");
+    s = s.replace(/\bShop Owner\b/gi, "Dono(a) da loja");
+    s = s.replace(/\bStore Owner\b/gi, "Dono(a) da loja");
+    s = s.replace(/\bFather\b/gi, "Pai");
+    s = s.replace(/\bMother\b/gi, "Mãe");
+    s = s.replace(/\bSon\b/gi, "Filho");
+    s = s.replace(/\bDaughter\b/gi, "Filha");
+    s = s.replace(/\bBrother\b/gi, "Irmão");
+    s = s.replace(/\bSister\b/gi, "Irmã");
+    s = s.replace(/\bGrandfather\b/gi, "Avô");
+    s = s.replace(/\bGrandmother\b/gi, "Avó");
+    s = s.replace(/\bHusband\b/gi, "Marido");
+    s = s.replace(/\bWife\b/gi, "Esposa");
+    s = s.replace(/\bFiancé(e)?\b/gi, "Noivo(a)");
+    s = s.replace(/\bBoyfriend\b/gi, "Namorado");
+    s = s.replace(/\bGirlfriend\b/gi, "Namorada");
+    s = s.replace(/\bNeighbor\b/gi, "Vizinho(a)");
+    s = s.replace(/\bRoommate\b/gi, "Companheiro(a) de quarto");
+    s = s.replace(/\bLandlord\b/gi, "Proprietário(a)");
+    s = s.replace(/\bJanitor\b/gi, "Zelador(a)");
+    s = s.replace(/\bCoach\b/gi, "Treinador(a)");
+    s = s.replace(/\bReferee\b/gi, "Árbitro(a)");
+    s = s.replace(/\bPlayer\b/gi, "Jogador(a)");
+    s = s.replace(/\bFan\b/gi, "Fã");
+    s = s.replace(/\bSpectator\b/gi, "Espectador(a)");
+    s = s.replace(/\bAnniversary\b/gi, "Aniversário");
+    s = s.replace(/\bWedding\b/gi, "Casamento");
+    s = s.replace(/\bBride\b/gi, "Noiva");
+    s = s.replace(/\bGroom\b/gi, "Noivo");
+    s = s.replace(/\bOfficer\b/gi, "Oficial");
+    s = s.replace(/\buncredited\b/gi, "não creditado");
+    return s;
+  };
+
   return (
     <div className="min-h-screen bg-black text-white py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-5xl mx-auto bg-gray-800 rounded-xl shadow-xl overflow-hidden p-6 md:p-10">
@@ -129,8 +281,14 @@ export default function MovieDetailsPage() {
             <p className="text-gray-300 text-lg">
               {movie.release_date &&
                 `Lançamento: ${new Date(movie.release_date).getFullYear()}`}
-              {movie.runtime && ` | Duração: ${movie.runtime} min`}
+              {runtimeStr && ` | Duração: ${runtimeStr}`}
             </p>
+            {(certificationBR || imdbUrl) && (
+              <div className="flex flex-wrap gap-4 text-sm text-gray-300">
+                {certificationBR && (<span>Classificação (BR): {certificationBR}</span>)}
+                {imdbUrl && (<a href={imdbUrl} target="_blank" rel="noreferrer" className="text-green-400 hover:underline">IMDb</a>)}
+              </div>
+            )}
 
             <div className="flex items-center text-xl text-gray-700 dark:text-gray-200">
               <span className="text-yellow-500 mr-2">★</span>
@@ -168,6 +326,44 @@ export default function MovieDetailsPage() {
               </div>
             )}
 
+
+            {brProviders && (
+              <div>
+                <h3 className="text-lg font-bold text-gray-200 mb-2">Onde assistir (BR)</h3>
+                <div className="flex flex-col gap-2 text-sm">
+                  {brProviders.flatrate && brProviders.flatrate.length > 0 && (
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-gray-300">Streaming:</span>
+                      {brProviders.flatrate.map(p => (
+                        <div key={p.provider_id} className="flex items-center gap-2">
+                          {p.logo_path ? (
+                            <Image src={`https://image.tmdb.org/t/p/w45${p.logo_path}`} alt={translateProviderName(p.provider_name)} width={24} height={24} />
+                          ) : null}
+                          <span className="text-gray-200">{translateProviderName(p.provider_name)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {brProviders.rent && brProviders.rent.length > 0 && (
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-gray-300">Alugar:</span>
+                      {brProviders.rent.map(p => (
+                        <span key={p.provider_id} className="text-gray-200">{translateProviderName(p.provider_name)}</span>
+                      ))}
+                    </div>
+                  )}
+                  {brProviders.buy && brProviders.buy.length > 0 && (
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-gray-300">Comprar:</span>
+                      {brProviders.buy.map(p => (
+                        <span key={p.provider_id} className="text-gray-200">{translateProviderName(p.provider_name)}</span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {movie.credits?.cast && movie.credits.cast.length > 0 && (
               <div>
                 <h2 className="text-2xl font-semibold text-white mb-3">
@@ -195,10 +391,10 @@ export default function MovieDetailsPage() {
                         {actor.name}
                       </span>
                       <span className="text-xs text-gray-400">
-                        {actor.character}
+                        {translateCharacter(actor.character)}
                       </span>
-                    </div>
-                  ))}
+                      </div>
+                    ))}
                 </div>
               </div>
             )}
@@ -244,6 +440,48 @@ export default function MovieDetailsPage() {
                         frameBorder="0"
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                         allowFullScreen></iframe>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            
+
+            {recs.length > 0 && (
+              <div className="mt-8">
+                <h3 className="text-lg font-bold text-gray-200 mb-3">Recomendações</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {recs.map((r) => (
+                    <div key={r.id} className="cursor-pointer" onClick={() => router.push(`/movies/${r.id}`)}>
+                      <div className="relative w-full h-48 bg-gray-700 rounded overflow-hidden">
+                        {r.poster_path ? (
+                          <Image src={`https://image.tmdb.org/t/p/w300${r.poster_path}`} alt={r.title || r.name || "Pôster"} fill sizes="(max-width: 640px) 50vw, 25vw" className="object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-gray-300">Sem pôster</div>
+                        )}
+                      </div>
+                      <div className="mt-2 text-sm text-gray-200 truncate">{r.title || r.name}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {movie.similar?.results && movie.similar.results.length > 0 && (
+              <div className="mt-8">
+                <h3 className="text-lg font-bold text-gray-200 mb-3">Títulos semelhantes</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {movie.similar.results.slice(0, 8).map((r) => (
+                    <div key={r.id} className="cursor-pointer" onClick={() => router.push(`/movies/${r.id}`)}>
+                      <div className="relative w-full h-48 bg-gray-700 rounded overflow-hidden">
+                        {r.poster_path ? (
+                          <Image src={`https://image.tmdb.org/t/p/w300${r.poster_path}`} alt={r.title || r.name || "Pôster"} fill sizes="(max-width: 640px) 50vw, 25vw" className="object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-gray-300">Sem pôster</div>
+                        )}
+                      </div>
+                      <div className="mt-2 text-sm text-gray-200 truncate">{r.title || r.name}</div>
                     </div>
                   ))}
                 </div>

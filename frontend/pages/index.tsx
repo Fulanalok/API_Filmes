@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useRouter } from "next/router";
-import { useQuery } from "@tanstack/react-query";
-import { searchMovies, SearchApiResponse, getPopularMovies } from "@/services/MovieApiService";
+import { useInfiniteQuery } from "@tanstack/react-query";
+import type { InfiniteData } from "@tanstack/react-query";
+import { searchMoviesPage, SearchApiResponse, getPopularMoviesPage } from "@/services/MovieApiService";
 import Image from "next/image";
 import Link from "next/link";
 import { MovieResult } from "@/types/movie";
@@ -14,28 +15,46 @@ export default function Home() {
   const router = useRouter();
 
   const {
-    data: moviesData,
+    data: searchPages,
     isLoading,
     isFetching,
     isError,
     error,
-  } = useQuery<SearchApiResponse, Error>({
+    hasNextPage: hasNextSearch,
+    fetchNextPage: fetchNextSearch,
+    isFetchingNextPage: isFetchingNextSearch,
+  } = useInfiniteQuery<SearchApiResponse, Error>({
     queryKey: ["moviesSearch", query],
-    queryFn: () => searchMovies(query),
+    queryFn: ({ pageParam = 1 }) => searchMoviesPage(query, pageParam as number),
     enabled: enabledSearch && query.trim() !== "",
+    initialPageParam: 1,
+    getNextPageParam: (lastPage, allPages) => {
+      const totalPages = lastPage.total_pages ?? 1;
+      const next = allPages.length + 1;
+      return next <= totalPages ? next : undefined;
+    },
     staleTime: 1000 * 60 * 5,
     gcTime: 1000 * 60 * 10,
     retry: 3,
   });
 
   const {
-    data: popularData,
+    data: popularPages,
     isLoading: isLoadingPopular,
     isError: isErrorPopular,
     error: errorPopular,
-  } = useQuery<SearchApiResponse, Error>({
+    hasNextPage,
+    fetchNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery<SearchApiResponse, Error>({
     queryKey: ["popularMovies"],
-    queryFn: () => getPopularMovies(),
+    queryFn: ({ pageParam = 1 }) => getPopularMoviesPage(pageParam as number),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage, allPages) => {
+      const totalPages = lastPage.total_pages ?? 1;
+      const next = allPages.length + 1;
+      return next <= totalPages ? next : undefined;
+    },
     staleTime: 1000 * 60 * 5,
     gcTime: 1000 * 60 * 10,
     retry: 2,
@@ -44,17 +63,35 @@ export default function Home() {
   const handleSearchSubmit = (event: React.FormEvent) => {
     event.preventDefault();
     if (!query.trim()) return;
+    console.log("frontend: submit busca", { query });
     setEnabledSearch(true);
   };
 
   const handleMovieCardClick = (movieId: number) => {
+    console.log("frontend: navegar para detalhes", { id: movieId });
     router.push(`/movies/${movieId}`);
   };
 
   const displayLoading = isLoading || isFetching;
 
-  const movies: MovieResult[] = moviesData?.results || [];
-  const popular: MovieResult[] = popularData?.results || [];
+  const movies: MovieResult[] = (searchPages?.pages || []).flatMap((p: SearchApiResponse) => p.results) || [];
+  const popular: MovieResult[] = (popularPages?.pages || []).flatMap((p: SearchApiResponse) => p.results) || [];
+  console.log("frontend: listas", { query, enabledSearch, movies: movies.length, popular: popular.length, loading: isLoading || isFetching });
+
+  // Logs reativos para resultados da busca e populares (compatível com React Query v5)
+  const pagesSearch = (searchPages as InfiniteData<SearchApiResponse> | undefined)?.pages || [];
+  const lastSearch: SearchApiResponse | undefined = pagesSearch[pagesSearch.length - 1];
+  const pagesPopular = (popularPages as InfiniteData<SearchApiResponse> | undefined)?.pages || [];
+  const lastPopular: SearchApiResponse | undefined = pagesPopular[pagesPopular.length - 1];
+  if (lastSearch || lastPopular) {
+    console.log("frontend: estado", {
+      query,
+      search_pages: pagesSearch.length,
+      search_last_results: Array.isArray(lastSearch?.results) ? lastSearch!.results.length : 0,
+      popular_pages: pagesPopular.length,
+      popular_last_results: Array.isArray(lastPopular?.results) ? lastPopular!.results.length : 0,
+    });
+  }
 
   return (
     <div className="min-h-screen bg-black flex flex-col items-center py-10 px-4 sm:px-6 lg:px-8">
@@ -69,63 +106,86 @@ export default function Home() {
           value={query}
           onChange={(val) => {
             setQuery(val);
-            if (!val.trim()) setEnabledSearch(false);
+            const disable = !val.trim();
+            if (disable) {
+              setEnabledSearch(false);
+            } else {
+              setEnabledSearch(true);
+            }
+            console.log("frontend: change", { value: val, enabledSearch: !disable });
           }}
           onSubmit={handleSearchSubmit}
           onDebouncedChange={(val) => {
-            if (val.trim()) setEnabledSearch(true);
+            const ok = !!val.trim();
+            if (ok) setEnabledSearch(true);
+            console.log("frontend: debounced", { value: val, enabledSearch: ok });
           }}
           debounceMs={500}
           placeholder="Busque por filmes ou séries, ex: Barbie, Matrix..."
         />
-        <div className="mt-2">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-2xl font-bold text-white">Populares agora</h2>
-          </div>
-          {isErrorPopular && (
-            <p className="text-red-500 text-center mb-4">{errorPopular?.message}</p>
-          )}
-          <div className="space-y-6">
-            {(
-              (isLoadingPopular
-                ? (Array.from({ length: 6 }, () => null) as (MovieResult | null)[])
-                : (popular.slice(0, 6) as (MovieResult | null)[]))
-            ).map((item, idx) => (
-              <div
-                key={item?.id ?? idx}
-                className="rounded-2xl overflow-hidden cursor-pointer transition-transform duration-300 hover:scale-[1.01] shadow-lg"
-                onClick={() => item && handleMovieCardClick(item.id)}
-              >
-                {item ? (
-                  item.backdrop_path ? (
-                    <div className="relative w-full h-44 sm:h-56 md:h-64 lg:h-72">
-                      <Image
-                        src={`https://image.tmdb.org/t/p/w780${item.backdrop_path}`}
-                        alt={item.title || item.name || "Banner"}
-                        fill
-                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 100vw, 100vw"
-                        className="object-cover"
-                        priority={idx === 0}
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
-                      <div className="absolute bottom-0 left-0 right-0 p-4">
-                        <h3 className="text-white text-lg font-semibold truncate">
-                          {item.title || item.name}
-                        </h3>
+        {!(enabledSearch && query.trim()) && (
+          <div className="mt-2">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-2xl font-bold text-white">Populares agora</h2>
+            </div>
+            {isErrorPopular && (
+              <p className="text-red-500 text-center mb-4">{errorPopular?.message}</p>
+            )}
+            <div className="space-y-6">
+              {(isLoadingPopular
+                ? (Array.from({ length: 8 }, () => null) as (MovieResult | null)[])
+                : (popular as (MovieResult | null)[])
+              ).map((item, idx) => (
+                <div
+                  key={item?.id ?? idx}
+                  className="rounded-2xl overflow-hidden cursor-pointer transition-transform duration-300 hover:scale-[1.01] shadow-lg"
+                  onClick={() => item && handleMovieCardClick(item.id)}
+                >
+                  {item ? (
+                    item.backdrop_path ? (
+                      <div className="relative w-full h-44 sm:h-56 md:h-64 lg:h-72">
+                        <Image
+                          src={`https://image.tmdb.org/t/p/w780${item.backdrop_path}`}
+                          alt={item.title || item.name || "Banner"}
+                          fill
+                          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 100vw, 100vw"
+                          className="object-cover"
+                          priority={idx === 0}
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
+                        <div className="absolute bottom-0 left-0 right-0 p-4">
+                          <h3 className="text-white text-lg font-semibold truncate">
+                            {item.title || item.name}
+                          </h3>
+                        </div>
                       </div>
-                    </div>
+                    ) : (
+                      <div className="bg-gray-800 w-full h-44 sm:h-56 md:h-64 lg:h-72 flex items-center justify-center text-gray-300">
+                        {item.title || item.name}
+                      </div>
+                    )
                   ) : (
-                    <div className="bg-gray-800 w-full h-44 sm:h-56 md:h-64 lg:h-72 flex items-center justify-center text-gray-300">
-                      {item.title || item.name}
-                    </div>
-                  )
-                ) : (
-                  <div className="bg-gray-800 w-full h-44 sm:h-56 md:h-64 lg:h-72 animate-pulse" />
-                )}
-              </div>
-            ))}
+                    <div className="bg-gray-800 w-full h-44 sm:h-56 md:h-64 lg:h-72 animate-pulse" />
+                  )}
+                </div>
+              ))}
+              {!isLoadingPopular && !isErrorPopular && (
+                <div className="flex justify-center mt-4">
+                  <button
+                    onClick={() => {
+                      console.log("frontend: carregar mais populares");
+                      fetchNextPage();
+                    }}
+                    disabled={!hasNextPage || isFetchingNextPage}
+                    className="px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
+                  >
+                    {isFetchingNextPage ? "Carregando..." : hasNextPage ? "Carregar mais" : "Fim"}
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
         {isError && (
           <p className="text-red-500 text-center mb-6 text-lg font-medium">
             Erro: {error?.message}
@@ -175,6 +235,20 @@ export default function Home() {
                 onClick={handleMovieCardClick}
               />
             ))}
+          </div>
+        )}
+        {enabledSearch && query.trim() && !displayLoading && !isError && (
+          <div className="flex justify-center mt-6">
+            <button
+              onClick={() => {
+                console.log("frontend: carregar mais resultados", { query });
+                fetchNextSearch();
+              }}
+              disabled={!hasNextSearch || isFetchingNextSearch}
+              className="px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
+            >
+              {isFetchingNextSearch ? "Carregando..." : hasNextSearch ? "Carregar mais" : "Fim"}
+            </button>
           </div>
         )}
       </div>

@@ -55,7 +55,7 @@ docker-compose up --build
 
 ### Passo 4: Acessar a aplicação
 - **Frontend**: http://localhost:3000
-- **Backend**: http://localhost:5000
+- **Backend**: http://localhost:5001
 
 ## 📦 Rodar sem Docker (modo desenvolvimento)
 
@@ -83,7 +83,7 @@ Busca filmes por termo de pesquisa.
 
 **Exemplo:**
 ```
-http://localhost:5000/api/search/movie?query=matrix
+http://localhost:5001/api/search/movie?query=matrix
 ```
 
 ### `GET /api/movie/:id`
@@ -94,7 +94,7 @@ Obtém detalhes completos de um filme específico.
 
 **Exemplo:**
 ```
-http://localhost:5000/api/movie/603
+http://localhost:5001/api/movie/603
 ```
 
 ## 📁 Estrutura do Projeto
@@ -163,6 +163,10 @@ API_Filmes/
 
 - `.env` (na raiz):
   - `TMDB_API_KEY`: chave de acesso do TMDB (obrigatória).
+  - `OPENAI_API_KEY`: chave da OpenAI (opcional; sem ela o assistente opera em modo básico).
+  - `PORT`: porta do backend (padrão `5001`).
+- `.env.local` no `frontend/` (opcional):
+  - `NEXT_PUBLIC_BACKEND_URL`: URL do backend. Ex.: `http://localhost:5001`.
 
 Valores fixos das melhorias (ajustáveis no código):
 - TTL do cache: `5 minutos`.
@@ -173,12 +177,20 @@ Valores fixos das melhorias (ajustáveis no código):
 - Subir com Docker:
   - `docker compose up --build`
 
+- Rodar em produção (sem Docker):
+  - Backend:
+    - `cd backend && npm install && npm run build && npm start`
+    - Exige `.env` com `TMDB_API_KEY` e (opcional) `OPENAI_API_KEY`
+  - Frontend:
+    - `cd frontend && npm install && npm run build && npm start`
+    - Configure `NEXT_PUBLIC_BACKEND_URL` quando o backend não estiver em `http://localhost:5001`
+
 - Verificar healthchecks:
   - `docker ps` e observe o campo `STATUS` (deve ficar `healthy`).
 
 - Testar endpoints rapidamente:
-  - `curl http://localhost:5000/api/search/movie?query=matrix`
-  - `curl http://localhost:5000/api/movie/603`
+  - `curl http://localhost:5001/api/search/movie?query=matrix`
+  - `curl http://localhost:5001/api/movie/603`
 
 ## 📌 Observações
 
@@ -211,15 +223,15 @@ Lucas Vilhena
 
 ## Assistente de IA
 
-- Endpoint: `POST /api/assistant`
 - Página: `/assistant`
+- Endpoints: `POST /api/assistant` e `POST /api/assistant/stream`
 - Requer `TMDB_API_KEY`; usa `OPENAI_API_KEY` se disponível para respostas neurais.
+- Quando você pede por um gênero (ex.: "filmes de ação", "comédia", "ficção científica"), o assistente usa diretamente o endpoint de descoberta do TMDB (`discover/movie`) com `with_genres`, em vez de buscar por título. Também entende períodos (ex.: “anos 90”) e pode elevar a nota mínima para pedidos como “cerebral”/“reflexivo”.
 
 ## CI no GitHub Actions
 
-- Workflow em `.github/workflows/ci.yml` builda `backend` e `frontend` em cada push/PR.
-- Configure Secrets do repositório:
+- Se desejar, configure um workflow de CI para buildar `backend` e `frontend` em cada push/PR.
+- Configure Secrets do repositório se for fazer deploy automatizado:
   - `TMDB_API_KEY`: chave TMDB
   - `OPENAI_API_KEY`: chave OpenAI
   - `NEXT_PUBLIC_BACKEND_URL`: URL do backend (ex.: `https://sua-api.exemplo`)
-![CI](https://github.com/Fulanalok/API_Filmes/actions/workflows/ci.yml/badge.svg)

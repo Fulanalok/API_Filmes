@@ -4,17 +4,20 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     ports:
-      - "5000:5000"
+      - "5001:5001"
     env_file:
+      - ./backend/.env
       - .env
+    environment:
+      NODE_ENV: production
+      PORT: 5001
     volumes:
-      - ./backend:/app
-      - /app/node_modules
-    command: npm run dev
+      - ./backend/.env:/app/.env:ro
+    command: npm run start
     networks:
       - movie-app-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/"]
+      test: ["CMD", "curl", "-f", "http://localhost:5001/"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -26,7 +29,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      NEXT_PUBLIC_BACKEND_URL: http://backend:5000
+      NEXT_PUBLIC_BACKEND_URL: http://backend:5001
     depends_on:
       - backend
     networks:

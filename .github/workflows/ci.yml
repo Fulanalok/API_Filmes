@@ -19,6 +19,16 @@ jobs:
           cache: npm
           cache-dependency-path: backend/package-lock.json
       - run: npm ci --no-audit --no-fund
+      - name: Lint backend
+        run: |
+          export NEXT_TELEMETRY_DISABLED=1
+          export CI=true
+          npm run lint
+      - name: Test backend
+        run: |
+          export NEXT_TELEMETRY_DISABLED=1
+          export CI=true
+          npm test
       - run: |
           export NEXT_TELEMETRY_DISABLED=1
           export CI=true
@@ -44,6 +54,11 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-nextjs-
       - run: npm ci --no-audit --no-fund
+      - name: Lint frontend
+        run: |
+          export NEXT_TELEMETRY_DISABLED=1
+          export CI=true
+          npm run lint
       - run: |
           export NEXT_TELEMETRY_DISABLED=1
           export TAILWIND_DISABLE_OXIDE=1

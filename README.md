@@ -73,30 +73,6 @@ npm install
 npm run dev
 ```
 
-## 🌐 Endpoints da API
-
-### `GET /api/search/movie`
-Busca filmes por termo de pesquisa.
-
-**Query Parameters:**
-- `query` (obrigatório): Termo de busca
-
-**Exemplo:**
-```
-http://localhost:5001/api/search/movie?query=matrix
-```
-
-### `GET /api/movie/:id`
-Obtém detalhes completos de um filme específico.
-
-**Path Parameters:**
-- `id` (obrigatório): ID do filme no TMDB
-
-**Exemplo:**
-```
-http://localhost:5001/api/movie/603
-```
-
 ## 📁 Estrutura do Projeto
 
 ```
@@ -104,7 +80,6 @@ API_Filmes/
 ├── backend/
 │   ├── src/
 │   │   └── index.ts
-│   ├── Dockerfile
 │   ├── package.json
 │   └── tsconfig.json
 ├── frontend/
@@ -112,8 +87,6 @@ API_Filmes/
 │   ├── components/
 │   ├── services/
 │   ├── types/
-│   ├── styles/
-│   ├── Dockerfile
 │   ├── package.json
 │   └── tsconfig.json
 ├── docker-compose.yml
@@ -121,117 +94,27 @@ API_Filmes/
 └── README.md
 ```
 
-## 🛠️ Mudanças Implementadas
+## 🧰 Como rodar
 
-- Backend
-  - Corrige `GET /api/movie/:id` usando `append_to_response` via `params` (TMDB).
-  - Valida `id` como inteiro positivo e retorna erro claro se inválido.
-  - Adiciona cache em memória com TTL de 5 minutos para busca e detalhes.
-  - Aplica rate limiting (60 req/min por IP) em todas as rotas sob `/api`.
+- Pré-requisitos:
+  - Node.js 20+ e npm (ou Docker, opcional)
+  - Chave da API do TMDB (gratuita)
 
-- Frontend
-  - Implementa `components/SearchBar.tsx` com debounce opcional e acessibilidade.
-  - Integra a SearchBar na `pages/index.tsx` e adiciona skeletons de carregamento.
-  - Configura `next.config.ts` para permitir imagens de `image.tmdb.org` (TMDB) no `next/image`.
+- Configuração das variáveis:
+  - Crie `.env` na raiz baseado em `.env.example`
+  - Defina `TMDB_API_KEY` (obrigatória)
+  - Opcional: `OPENAI_API_KEY` (respostas neurais do assistente)
+  - No frontend, você pode definir `frontend/.env.local` com `NEXT_PUBLIC_BACKEND_URL=http://localhost:5001`
 
-- Docker/Infra
-  - Adiciona healthchecks no `docker-compose.yml`:
-    - Backend: `curl -f http://localhost:5000/`
-    - Frontend: `curl -f http://localhost:3000/`
-  - Instala `curl` na imagem final do frontend para suportar healthchecks HTTP.
+- Rodar em desenvolvimento:
+  - Backend: `cd backend && npm install && npm run dev`
+  - Frontend: `cd frontend && npm install && npm run dev`
+  - Acesse: `http://localhost:3000` (frontend) e `http://localhost:5001` (backend)
 
-## ✅ Como validar as mudanças
+- Rodar em produção local:
+  - Backend: `cd backend && npm install && npm run build && npm start`
+  - Frontend: `cd frontend && npm install && npm run build && npm start`
 
-- Detalhes TMDB corrigidos
-  - `GET http://localhost:5000/api/movie/603` deve retornar detalhes completos (inclui `videos` e `credits`).
-
-- Cache com TTL
-  - Execute duas buscas iguais em sequência (ex.: `matrix`) e observe menor latência na segunda.
-  - Após ~5 minutos, o cache expira e a primeira chamada volta mais lenta.
-
-- Rate limiting
-  - Dispare mais de 60 requisições por minuto ao mesmo IP em `/api` e espere `429 Too Many Requests`.
-
-- SearchBar + Skeletons
-  - Digite rapidamente na home; deve evitar chamadas excessivas ao backend enquanto digita (debounce).
-  - Skeletons aparecem durante carregamento dos resultados.
-
-- Imagens TMDB
-  - Cartazes e fotos de perfil devem carregar sem erro graças a `images.domains = ['image.tmdb.org']`.
-
-## ⚙️ Variáveis de ambiente
-
-- `.env` (na raiz):
-  - `TMDB_API_KEY`: chave de acesso do TMDB (obrigatória).
-  - `OPENAI_API_KEY`: chave da OpenAI (opcional; sem ela o assistente opera em modo básico).
-  - `PORT`: porta do backend (padrão `5001`).
-- `.env.local` no `frontend/` (opcional):
-  - `NEXT_PUBLIC_BACKEND_URL`: URL do backend. Ex.: `http://localhost:5001`.
-
-Valores fixos das melhorias (ajustáveis no código):
-- TTL do cache: `5 minutos`.
-- Rate limiting: `60 requisições/minuto` por IP.
-
-## 🧰 Comandos úteis
-
-- Subir com Docker:
+- Rodar com Docker (opcional):
   - `docker compose up --build`
-
-- Rodar em produção (sem Docker):
-  - Backend:
-    - `cd backend && npm install && npm run build && npm start`
-    - Exige `.env` com `TMDB_API_KEY` e (opcional) `OPENAI_API_KEY`
-  - Frontend:
-    - `cd frontend && npm install && npm run build && npm start`
-    - Configure `NEXT_PUBLIC_BACKEND_URL` quando o backend não estiver em `http://localhost:5001`
-
-- Verificar healthchecks:
-  - `docker ps` e observe o campo `STATUS` (deve ficar `healthy`).
-
-- Testar endpoints rapidamente:
-  - `curl http://localhost:5001/api/search/movie?query=matrix`
-  - `curl http://localhost:5001/api/movie/603`
-
-## 📌 Observações
-
-- CORS do backend está amplo por conveniência em dev; pode ser restrito por domínio se necessário.
-- As versões usadas (Next 15, React 19) são recentes; teste em produção com cuidado.
-- Próximos passos sugeridos: cache distribuído (Redis), testes automatizados, logs e métricas, CI/CD.
-
-## 🔒 Segurança
-
-- ⚠️ **NUNCA** commite o arquivo `.env` com suas chaves de API
-- O arquivo `.gitignore` já está configurado para proteger suas credenciais
-- Use sempre o `.env.example` como referência para outras pessoas
-
-## 📝 Licença
-
-Este projeto é livre para uso pessoal e educacional.
-
-## 👨‍💻 Autor
-
-Lucas Vilhena
-## Executar em desenvolvimento
-
-- Backend:
-  - `cd backend`
-  - `npm run dev`
-  - Variáveis em `backend/.env`: `TMDB_API_KEY`, `OPENAI_API_KEY`
-- Frontend:
-  - `cd frontend`
-  - `npx next@15.3.4 dev -p 3000` com `NEXT_PUBLIC_BACKEND_URL=http://localhost:5000`
-
-## Assistente de IA
-
-- Página: `/assistant`
-- Endpoints: `POST /api/assistant` e `POST /api/assistant/stream`
-- Requer `TMDB_API_KEY`; usa `OPENAI_API_KEY` se disponível para respostas neurais.
-- Quando você pede por um gênero (ex.: "filmes de ação", "comédia", "ficção científica"), o assistente usa diretamente o endpoint de descoberta do TMDB (`discover/movie`) com `with_genres`, em vez de buscar por título. Também entende períodos (ex.: “anos 90”) e pode elevar a nota mínima para pedidos como “cerebral”/“reflexivo”.
-
-## CI no GitHub Actions
-
-- Se desejar, configure um workflow de CI para buildar `backend` e `frontend` em cada push/PR.
-- Configure Secrets do repositório se for fazer deploy automatizado:
-  - `TMDB_API_KEY`: chave TMDB
-  - `OPENAI_API_KEY`: chave OpenAI
-  - `NEXT_PUBLIC_BACKEND_URL`: URL do backend (ex.: `https://sua-api.exemplo`)
+  - Frontend em `http://localhost:3000`, Backend em `http://localhost:5001`
